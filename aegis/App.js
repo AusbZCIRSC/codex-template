@@ -17,9 +17,18 @@ export default function App() {
   const [partialResult, setPartialResult] = useState('');
 
   const restartTimerRef = useRef(null);
+  const apiKeyRef = useRef('');
+  const isListeningRef = useRef(false);
+
   const radarOpacity = useSharedValue(1);
 
   useEffect(() => {
+    apiKeyRef.current = apiKey;
+  }, [apiKey]);
+
+  useEffect(() => {
+    isListeningRef.current = isListening;
+
     if (isListening) {
       radarOpacity.value = withRepeat(
         withSequence(
@@ -62,7 +71,7 @@ export default function App() {
 
   const onSpeechEnd = (e) => {
     // Continue listening if explicitly toggled on
-    if (isListening) {
+    if (isListeningRef.current) {
       restartTimerRef.current = setTimeout(() => {
         startListening();
       }, 500);
@@ -73,7 +82,7 @@ export default function App() {
     console.log('onSpeechError: ', e);
     // 7 means no match, 6 means speech timeout, 8 means busy
     if (e.error && (e.error.code === '7' || e.error.code === '6' || e.error.code === '8')) {
-      if (isListening) {
+      if (isListeningRef.current) {
          restartTimerRef.current = setTimeout(() => {
             startListening();
          }, 500);
@@ -195,13 +204,13 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Schema:
   ]
 }`;
 
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKeyRef.current}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          system_instruction: {
+          systemInstruction: {
             parts: [{ text: systemPrompt }]
           },
           contents: [{
@@ -252,6 +261,7 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Schema:
       const storedKey = await AsyncStorage.getItem('@gemini_api_key');
       if (storedKey) {
         setApiKey(storedKey);
+        apiKeyRef.current = storedKey;
         setIsKeyValid(true);
       }
     } catch (e) {
@@ -267,6 +277,7 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Schema:
     try {
       await AsyncStorage.setItem('@gemini_api_key', inputText.trim());
       setApiKey(inputText.trim());
+      apiKeyRef.current = inputText.trim();
       setIsKeyValid(true);
     } catch (e) {
       console.error('Failed to save API key', e);
@@ -277,6 +288,7 @@ Antworte AUSSCHLIESSLICH mit gültigem JSON nach folgendem Schema:
     try {
       await AsyncStorage.removeItem('@gemini_api_key');
       setApiKey('');
+      apiKeyRef.current = '';
       setIsKeyValid(false);
       setInputText('');
     } catch (e) {
